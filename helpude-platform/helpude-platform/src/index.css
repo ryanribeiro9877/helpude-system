@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 260 50% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 260 50% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 260 50% 20%;
+    --primary: 260 45% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 174 60% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 260 20% 96%;
+    --muted-foreground: 260 20% 45%;
+    --accent: 260 30% 94%;
+    --accent-foreground: 260 50% 20%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 260 20% 90%;
+    --input: 260 20% 90%;
+    --ring: 260 45% 45%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 260 50% 8%;
+    --foreground: 0 0% 98%;
+    --card: 260 45% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 260 45% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 260 45% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 174 60% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 260 30% 18%;
+    --muted-foreground: 260 20% 65%;
+    --accent: 260 30% 20%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 260 30% 20%;
+    --input: 260 30% 20%;
+    --ring: 260 45% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl;
+  }
+  
+  .glass-card-dark {
+    @apply bg-helpude-purple-800/80 backdrop-blur-xl border border-white/10 shadow-xl;
+  }
+  
+  .gradient-primary {
+    @apply bg-gradient-to-br from-helpude-purple-500 via-helpude-purple-600 to-helpude-purple-800;
+  }
+  
+  .gradient-secondary {
+    @apply bg-gradient-to-br from-helpude-teal-400 via-helpude-teal-500 to-helpude-teal-600;
+  }
+  
+  .gradient-mesh {
+    background: 
+      radial-gradient(at 40% 20%, hsla(260, 50%, 45%, 0.3) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsla(174, 60%, 45%, 0.2) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsla(260, 50%, 35%, 0.2) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, hsla(174, 60%, 35%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(260, 50%, 45%, 0.2) 0px, transparent 50%),
+      radial-gradient(at 80% 100%, hsla(174, 60%, 45%, 0.15) 0px, transparent 50%);
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-helpude-purple-600 to-helpude-teal-500;
+  }
+  
+  .animate-stagger > * {
+    @apply opacity-0 animate-fade-in;
+  }
+  
+  .animate-stagger > *:nth-child(1) { animation-delay: 0.1s; }
+  .animate-stagger > *:nth-child(2) { animation-delay: 0.2s; }
+  .animate-stagger > *:nth-child(3) { animation-delay: 0.3s; }
+  .animate-stagger > *:nth-child(4) { animation-delay: 0.4s; }
+  .animate-stagger > *:nth-child(5) { animation-delay: 0.5s; }
+  .animate-stagger > *:nth-child(6) { animation-delay: 0.6s; }
+  
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-2xl hover:-translate-y-1;
+  }
+  
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: shimmer 2s infinite;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-helpude-purple-300 rounded-full hover:bg-helpude-purple-400 transition-colors;
+}
+
+/* Selection */
+::selection {
+  @apply bg-helpude-purple-200 text-helpude-purple-900;
+}
