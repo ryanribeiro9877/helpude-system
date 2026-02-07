@@ -1,0 +1,104 @@
+# HelpUde Platform - Contexto para Claude Code
+
+## Sobre o Projeto
+
+HelpUde e uma plataforma de credito para clinicas que conecta pacientes a linhas de credito para saude. O sistema permite gerenciar consultas em lote, acompanhar o pipeline de clientes aprovados e automatizar o marketing.
+
+## Estrutura do Projeto
+
+O codigo-fonte esta em: `helpude-platform/helpude-platform/`
+
+```
+src/
+├── components/
+│   ├── dashboard/       # LevelProgress, MetricCard, ProductCard
+│   ├── layout/          # Header, Sidebar, MainLayout
+│   ├── marketing/       # MarketingConfig
+│   ├── pipeline/        # PipelineBoard (Kanban)
+│   └── ui/              # Componentes base (shadcn/ui)
+├── contexts/
+│   └── AuthContext.tsx   # Contexto de autenticacao
+├── lib/
+│   └── utils.ts          # Funcoes utilitarias (cn)
+├── pages/
+│   ├── DashboardPage.tsx
+│   ├── ConsultasPage.tsx
+│   ├── PipelinePage.tsx
+│   ├── MarketingPage.tsx
+│   ├── ProdutosPage.tsx
+│   ├── UsuariosPage.tsx
+│   └── LoginPage.tsx
+├── types/
+│   └── index.ts          # Tipos TypeScript
+├── App.tsx               # Rotas da aplicacao
+├── main.tsx              # Entry point
+└── index.css             # Estilos globais (Tailwind)
+```
+
+## Stack Tecnica
+
+- **Framework**: React 18.2 com TypeScript 5.3
+- **Build**: Vite 5.1.4
+- **Estilizacao**: Tailwind CSS 3.4 + shadcn/ui (Radix UI)
+- **Roteamento**: React Router DOM 6.22
+- **Estado**: React Context API + TanStack Query 5
+- **Formularios**: React Hook Form + Zod
+- **Graficos**: Recharts 2.12
+- **Animacoes**: Framer Motion 11
+- **Icones**: Lucide React
+- **Notificacoes**: Sonner
+
+## Comandos Essenciais
+
+```bash
+cd helpude-platform/helpude-platform
+
+# Instalar dependencias
+npm install
+
+# Servidor de desenvolvimento
+npm run dev
+
+# Build (inclui checagem TypeScript)
+npm run build    # Executa: tsc && vite build
+
+# Linter
+npm run lint
+
+# Preview do build
+npm run preview
+```
+
+## Design System
+
+- **Cor Primaria**: #7b5fc7 (Purple)
+- **Cor Secundaria**: #14b8a6 (Teal)
+- **Cor de Texto/CTA**: #3d246c (Dark Purple)
+- **Fontes**: Outfit (titulos), Plus Jakarta Sans (corpo)
+- **Componentes UI**: Baseados em shadcn/ui com customizacoes HelpUde
+
+## Funcionalidades Principais
+
+1. **Sistema de Niveis Progressivos** (3 niveis de acesso)
+2. **Dashboard** com metricas em tempo real e graficos
+3. **Consultas em Lote** - upload CSV/XLSX e processamento
+4. **Pipeline Kanban** - Aprovado > Mensagem > Engajamento > Convertido
+5. **Automacao de Marketing** - RCS/SMS, Email, Ligacao IA, WhatsApp
+6. **Gestao de Usuarios** - Admin, Operador, Visualizador
+
+## Diretrizes para Desenvolvimento
+
+- Manter TypeScript strict mode
+- Usar Tailwind CSS para estilizacao (evitar CSS inline ou arquivos CSS separados)
+- Componentes UI devem seguir o padrao shadcn/ui
+- Manter path alias `@/` para imports a partir de `src/`
+- Validacoes de formulario com Zod
+- Nomes de variaveis e comentarios podem estar em portugues
+- Mensagens de commit em portugues
+
+## Variaveis de Ambiente
+
+```
+VITE_API_URL=https://api.helpude.com.br
+VITE_APP_ENV=development
+```
