@@ -2,9 +2,11 @@ import express from "express";
 import cors from "cors";
 import { env } from "./config/env.js";
 import { connectDatabase } from "./config/database.js";
+import { logger } from "./config/logger.js";
+import { WhatsAppService } from "./services/WhatsAppService.js";
 import authRoutes from "./routes/auth.js";
-import consultaRoutes from "./routes/consultas.js";
-import pipelineRoutes from "./routes/pipeline.js";
+import leadRoutes from "./routes/leads.js";
+import webhookRoutes from "./routes/webhooks.js";
 import dashboardRoutes from "./routes/dashboard.js";
 
 const app = express();
@@ -17,14 +19,18 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/consultas", consultaRoutes);
-app.use("/api/pipeline", pipelineRoutes);
+app.use("/api/leads", leadRoutes);
+app.use("/api/webhooks", webhookRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
 async function start() {
   await connectDatabase();
+
+  // Initialize WhatsApp connection pool
+  await WhatsAppService.initializePool();
+
   app.listen(env.PORT, () => {
-    console.log(`Server running on http://localhost:${env.PORT}`);
+    logger.info(`Server running on http://localhost:${env.PORT}`);
   });
 }
 

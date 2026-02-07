@@ -1,90 +1,45 @@
-import { Worker } from "bullmq";
-import * as XLSX from "xlsx";
 import { connectDatabase } from "./config/database.js";
-import { redis } from "./config/redis.js";
-import { ConsultaLote } from "./models/ConsultaLote.js";
-import { Cliente } from "./models/Cliente.js";
-import { User } from "./models/User.js";
+import { logger } from "./config/logger.js";
+import { WhatsAppService } from "./services/WhatsAppService.js";
+import { proposalCheckQueue } from "./queues/index.js";
+import { createLeadImportWorker } from "./workers/leadImportWorker.js";
+import { createIaCallWorker } from "./workers/iaCallWorker.js";
+import { createWhatsappWorker } from "./workers/whatsappWorker.js";
+import { createRcsWorker } from "./workers/rcsWorker.js";
+import { createSmsWorker } from "./workers/smsWorker.js";
+import { createEmailWorker } from "./workers/emailWorker.js";
+import { createProposalCheckWorker } from "./workers/proposalCheckWorker.js";
 
 async function start() {
   await connectDatabase();
 
-  const worker = new Worker(
-    "consultas",
-    async (job) => {
-      const { loteId, userId, fileBuffer, fileName } = job.data;
-      console.log(`Processing lote ${loteId} - ${fileName}`);
+  // Start all workers
+  createLeadImportWorker();
+  createIaCallWorker();
+  createWhatsappWorker();
+  createRcsWorker();
+  createSmsWorker();
+  createEmailWorker();
+  createProposalCheckWorker();
 
-      try {
-        const buffer = Buffer.from(fileBuffer, "base64");
-        const workbook = XLSX.read(buffer, { type: "buffer" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
-
-        const user = await User.findById(userId);
-        if (!user) throw new Error("User not found");
-
-        const maxConsultas = user.consultasLimite - user.consultasUsadas;
-        const registros = rows.slice(0, Math.min(rows.length, maxConsultas));
-
-        let aprovados = 0;
-        let rejeitados = 0;
-        let pendentes = 0;
-
-        for (const row of registros) {
-          const creditStatus = Math.random() > 0.4 ? "approved" : "rejected";
-          const creditoAprovado =
-            creditStatus === "approved"
-              ? Math.floor(Math.random() * 50000) + 5000
-              : undefined;
-
-          if (creditStatus === "approved") aprovados++;
-          else rejeitados++;
-
-          await Cliente.create({
-            userId,
-            nome: row.nome || row.name || "N/A",
-            cpf: row.cpf || row.CPF || "N/A",
-            telefone: row.telefone || row.phone || "",
-            email: row.email || "",
-            creditoAprovado,
-            creditStatus,
-            loteId,
-          });
-        }
-
-        await User.findByIdAndUpdate(userId, {
-          $inc: { consultasUsadas: registros.length },
-        });
-
-        await ConsultaLote.findByIdAndUpdate(loteId, {
-          status: "completed",
-          totalRegistros: registros.length,
-          processedAt: new Date(),
-          resultados: { aprovados, rejeitados, pendentes },
-        });
-
-        console.log(
-          `Lote ${loteId} completed: ${aprovados} approved, ${rejeitados} rejected`
-        );
-      } catch (error) {
-        console.error(`Error processing lote ${loteId}:`, error);
-        await ConsultaLote.findByIdAndUpdate(loteId, { status: "error" });
-        throw error;
-      }
-    },
-    { connection: redis, concurrency: 3 }
+  // Schedule recurring jobs
+  // Proposal check every 30 minutes
+  await proposalCheckQueue.add(
+    "check",
+    {},
+    { repeat: { every: 30 * 60 * 1000 } }
   );
 
-  worker.on("completed", (job) => {
-    console.log(`Job ${job.id} completed`);
-  });
+  // WhatsApp daily reset at midnight (check every hour)
+  setInterval(async () => {
+    const now = new Date();
+    if (now.getHours() === 0 && now.getMinutes() < 5) {
+      await WhatsAppService.resetDailyCounts();
+    }
+  }, 60 * 60 * 1000);
 
-  worker.on("failed", (job, err) => {
-    console.error(`Job ${job?.id} failed:`, err.message);
-  });
-
-  console.log("Worker started, waiting for jobs...");
+  logger.info("All workers started (7 queues active)");
+  logger.info("Queues: lead-import, ia-call, whatsapp, rcs, sms, email, proposal-check");
 }
 
 start();

@@ -1,50 +1,62 @@
-import { Router, Response } from "express";
-import { authMiddleware, AuthRequest } from "../middlewares/auth.js";
-import { User } from "../models/User.js";
-import { Cliente } from "../models/Cliente.js";
+import { Router, Request, Response } from "express";
+import { authMiddleware } from "../middlewares/auth.js";
+import { Lead } from "../models/Lead.js";
+import { WhatsAppConnection } from "../models/WhatsAppConnection.js";
+import { LeadService } from "../services/LeadService.js";
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.get("/metrics", async (req: AuthRequest, res: Response) => {
+router.get("/metrics", async (_req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.userId);
-    if (!user) {
-      res.status(404).json({ error: "Usuário não encontrado" });
-      return;
-    }
-
-    const totalClientes = await Cliente.countDocuments({ userId: req.userId });
-    const aprovados = await Cliente.countDocuments({
-      userId: req.userId,
-      creditStatus: "approved",
-    });
-    const contatados = await Cliente.countDocuments({
-      userId: req.userId,
-      messagesSent: true,
-    });
-    const convertidos = await Cliente.countDocuments({
-      userId: req.userId,
-      pipelineStage: "converted",
-    });
-
-    const creditoTotal = await Cliente.aggregate([
-      { $match: { userId: user._id, creditStatus: "approved" } },
-      { $group: { _id: null, total: { $sum: "$creditoAprovado" } } },
+    const [colorStats, costSummary, totalLeads, whatsappConns] = await Promise.all([
+      LeadService.getStats(),
+      LeadService.getCostSummary(),
+      Lead.countDocuments(),
+      WhatsAppConnection.find({ status: "active" }),
     ]);
 
+    const interacted = await Lead.countDocuments({ interacted: true });
+    const converted = colorStats.roxo || 0;
+
     res.json({
-      totalConsultas: user.consultasUsadas,
-      consultasRestantes: user.consultasLimite - user.consultasUsadas,
-      creditoTotalAprovado: creditoTotal[0]?.total || 0,
-      clientesAprovados: aprovados,
-      clientesContatados: contatados,
-      taxaConversao: totalClientes > 0 ? (convertidos / totalClientes) * 100 : 0,
-      mediaCredito: aprovados > 0 ? (creditoTotal[0]?.total || 0) / aprovados : 0,
+      totalLeads,
+      colors: colorStats,
+      costs: costSummary,
+      taxaConversao: totalLeads > 0 ? ((converted / totalLeads) * 100).toFixed(1) : "0",
+      taxaInteracao: totalLeads > 0 ? ((interacted / totalLeads) * 100).toFixed(1) : "0",
+      whatsapp: {
+        activeConnections: whatsappConns.length,
+        totalSentToday: whatsappConns.reduce((sum, c) => sum + c.dailyMessagesSent, 0),
+        dailyCapacity: whatsappConns.reduce((sum, c) => sum + c.dailyLimit, 0),
+      },
     });
   } catch {
     res.status(500).json({ error: "Erro ao buscar métricas" });
+  }
+});
+
+router.get("/timeline", async (_req: Request, res: Response) => {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const daily = await Lead.aggregate([
+      { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          total: { $sum: 1 },
+          interacted: { $sum: { $cond: ["$interacted", 1, 0] } },
+          converted: { $sum: { $cond: [{ $eq: ["$color", "roxo"] }, 1, 0] } },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    res.json(daily);
+  } catch {
+    res.status(500).json({ error: "Erro ao buscar timeline" });
   }
 });
 

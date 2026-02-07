@@ -1,299 +1,249 @@
-import { motion } from 'framer-motion';
-import { 
-  Search, 
-  Users, 
-  DollarSign, 
-  TrendingUp,
-  CreditCard,
-  ArrowUpRight,
-  Upload
-} from 'lucide-react';
-import { MetricCard } from '@/components/dashboard/MetricCard';
-import { ProductCard } from '@/components/dashboard/ProductCard';
-import { LevelProgress } from '@/components/dashboard/LevelProgress';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import type { Product } from '@/types';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Users, TrendingUp, DollarSign, Zap, Upload } from "lucide-react";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import { StatsCharts } from "@/components/dashboard/StatsCharts";
+import { ColorKanban } from "@/components/dashboard/ColorKanban";
+import { LeadDetail } from "@/components/leads/LeadDetail";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Lead, DashboardMetrics, TimelineDataPoint } from "@/types";
 
-const products: Product[] = [
+// Mock data for demo (replaces API calls when backend not available)
+const MOCK_LEADS: Lead[] = [
   {
-    id: '1',
-    name: 'Crédito para Assalariados',
-    description: 'Crédito consignado para trabalhadores CLT com desconto em folha',
-    publicoPotencial: 'Trabalhadores com carteira assinada',
-    publicoNumero: 43,
-    status: 'active',
-    icon: '💼',
-    color: 'teal',
+    _id: "1", nome: "Maria Silva", cpf: "12345678901", telefones: ["11999990001"], telefonesInvalidos: [],
+    email: "maria@email.com", color: "roxo", list: "A", proposalValue: 15000, proposalStatus: "approved",
+    callAttempts: [], totalCallAttempts: 3, rcsSent: true, smsSent: true, emailSent: true,
+    linkClicked: true, interacted: true, totalCost: 1.45, observations: ["Cliente pagou via PIX"],
+    blocked: false, interactions: [
+      { type: "status_change", message: "Pagamento confirmado - ROXO", timestamp: new Date().toISOString() },
+      { type: "call", message: "Tentativa 3: answered", cost: 0.35, timestamp: new Date(Date.now() - 86400000).toISOString() },
+      { type: "whatsapp", message: "Template: Boas-vindas", cost: 0.08, timestamp: new Date(Date.now() - 172800000).toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 604800000).toISOString(), updatedAt: new Date().toISOString(),
   },
   {
-    id: '2',
-    name: 'Pagamento Recorrente',
-    description: 'Cuide da saúde pagando no cartão de forma recorrente',
-    publicoPotencial: 'Pessoas com cartão de crédito',
-    publicoNumero: 95,
-    status: 'coming_soon',
-    icon: '💳',
-    color: 'purple',
+    _id: "2", nome: "João Santos", cpf: "98765432100", telefones: ["11999990002"], telefonesInvalidos: [],
+    email: "joao@email.com", color: "azul", list: "A", proposalValue: 8500, proposalStatus: "pending",
+    callAttempts: [], totalCallAttempts: 2, rcsSent: false, smsSent: true, emailSent: true,
+    linkClicked: false, interacted: false, totalCost: 0.82, observations: ["Pendência documental"],
+    blocked: false, interactions: [
+      { type: "status_change", message: "Pendência identificada - AZUL", timestamp: new Date().toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 432000000).toISOString(), updatedAt: new Date().toISOString(),
   },
   {
-    id: '3',
-    name: 'Crédito via Boleto',
-    description: 'Crédito para pessoas sem restrição no nome',
-    publicoPotencial: 'Pessoas sem restrição SPC/Serasa',
-    publicoNumero: 120,
-    status: 'coming_soon',
-    icon: '📄',
-    color: 'blue',
+    _id: "3", nome: "Ana Oliveira", cpf: "45678912300", telefones: ["11999990003"], telefonesInvalidos: [],
+    email: "ana@email.com", color: "verde", list: "B",
+    callAttempts: [], totalCallAttempts: 1, rcsSent: true, smsSent: false, emailSent: true,
+    linkClicked: true, linkClickedAt: new Date().toISOString(), interacted: true, interactedAt: new Date().toISOString(),
+    totalCost: 0.49, observations: [], blocked: false,
+    interactions: [
+      { type: "email", message: "Email enviado - Template: Oferta", cost: 0.02, timestamp: new Date().toISOString() },
+      { type: "status_change", message: "Link clicado - VERDE", timestamp: new Date().toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 259200000).toISOString(), updatedAt: new Date().toISOString(),
+  },
+  {
+    _id: "4", nome: "Carlos Mendes", cpf: "32165498700", telefones: ["11999990004"], telefonesInvalidos: [],
+    email: "carlos@email.com", color: "vermelho", list: "B",
+    callAttempts: [], totalCallAttempts: 4, rcsSent: true, smsSent: true, emailSent: true,
+    linkClicked: false, interacted: false, totalCost: 1.92, observations: ["Registrou reclamação no Procon"],
+    blocked: true, blockReason: "Reclamação registrada",
+    interactions: [
+      { type: "status_change", message: "Reclamação - VERMELHO", timestamp: new Date().toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 518400000).toISOString(), updatedAt: new Date().toISOString(),
+  },
+  {
+    _id: "5", nome: "Fernanda Lima", cpf: "65498732100", telefones: ["11999990005"], telefonesInvalidos: [],
+    email: "fernanda@email.com", color: "laranja", list: "A",
+    callAttempts: [], totalCallAttempts: 0, rcsSent: false, smsSent: false, emailSent: false,
+    linkClicked: false, interacted: false, totalCost: 0, observations: [], blocked: false,
+    interactions: [
+      { type: "status_change", message: "Lead importado", timestamp: new Date().toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 86400000).toISOString(), updatedAt: new Date().toISOString(),
+  },
+  {
+    _id: "6", nome: "Ricardo Alves", cpf: "78912345600", telefones: ["11999990006"], telefonesInvalidos: [],
+    email: "ricardo@email.com", color: "laranja", list: "B",
+    callAttempts: [], totalCallAttempts: 0, rcsSent: false, smsSent: false, emailSent: false,
+    linkClicked: false, interacted: false, totalCost: 0, observations: [], blocked: false,
+    interactions: [
+      { type: "status_change", message: "Lead importado", timestamp: new Date().toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 43200000).toISOString(), updatedAt: new Date().toISOString(),
+  },
+  {
+    _id: "7", nome: "Patricia Gomes", cpf: "15975348620", telefones: ["11999990007"], telefonesInvalidos: [],
+    email: "patricia@email.com", color: "branco", list: "A", proposalStatus: "expired",
+    callAttempts: [], totalCallAttempts: 6, rcsSent: true, smsSent: true, emailSent: true,
+    linkClicked: false, interacted: false, totalCost: 2.1, observations: [], blocked: false,
+    interactions: [
+      { type: "status_change", message: "Proposta expirada - BRANCO", timestamp: new Date().toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 864000000).toISOString(), updatedAt: new Date().toISOString(),
+  },
+  {
+    _id: "8", nome: "Lucas Ferreira", cpf: "35795148260", telefones: ["11999990008"], telefonesInvalidos: [],
+    email: "lucas@email.com", color: "verde", list: "A", proposalValue: 12000,
+    callAttempts: [], totalCallAttempts: 2, rcsSent: true, smsSent: false, emailSent: true,
+    linkClicked: true, interacted: true, totalCost: 0.84, observations: [],
+    blocked: false, whatsappLastSentAt: new Date().toISOString(),
+    interactions: [
+      { type: "whatsapp", message: "WhatsApp enviado via connection-3", cost: 0.08, timestamp: new Date().toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 345600000).toISOString(), updatedAt: new Date().toISOString(),
   },
 ];
 
-const chartData = [
-  { date: 'Jan', consultas: 12, aprovados: 8 },
-  { date: 'Fev', consultas: 19, aprovados: 14 },
-  { date: 'Mar', consultas: 25, aprovados: 18 },
-  { date: 'Abr', consultas: 32, aprovados: 24 },
-  { date: 'Mai', consultas: 45, aprovados: 35 },
-  { date: 'Jun', consultas: 38, aprovados: 28 },
+const MOCK_METRICS: DashboardMetrics = {
+  totalLeads: 8,
+  colors: { roxo: 1, azul: 1, verde: 2, vermelho: 1, laranja: 2, branco: 1 },
+  costs: { totalCost: 7.62, byChannel: { call: 3.15, whatsapp: 0.96, rcs: 1.44, sms: 0.72, email: 0.24, link_generation: 0.11 } },
+  taxaConversao: "12.5",
+  taxaInteracao: "37.5",
+  whatsapp: { activeConnections: 20, totalSentToday: 47, dailyCapacity: 500 },
+};
+
+const MOCK_TIMELINE: TimelineDataPoint[] = [
+  { _id: "2026-01-08", total: 3, interacted: 1, converted: 0 },
+  { _id: "2026-01-15", total: 5, interacted: 2, converted: 1 },
+  { _id: "2026-01-22", total: 8, interacted: 3, converted: 1 },
+  { _id: "2026-01-29", total: 12, interacted: 5, converted: 2 },
+  { _id: "2026-02-05", total: 8, interacted: 3, converted: 1 },
 ];
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
+  const [metrics] = useState<DashboardMetrics>(MOCK_METRICS);
+  const [timeline] = useState<TimelineDataPoint[]>(MOCK_TIMELINE);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+
+  const handleUpdateColor = (id: string, color: Lead["color"]) => {
+    setLeads((prev) => prev.map((l) => (l._id === id ? { ...l, color, previousColor: l.color } : l)));
+    if (selectedLead?._id === id) setSelectedLead((prev) => prev ? { ...prev, color } : null);
+  };
+
+  const handleCall = (id: string) => {
+    setLeads((prev) =>
+      prev.map((l) =>
+        l._id === id ? { ...l, totalCallAttempts: l.totalCallAttempts + 1 } : l
+      )
+    );
+  };
+
+  const handleAddObservation = (id: string, text: string) => {
+    setLeads((prev) =>
+      prev.map((l) =>
+        l._id === id ? { ...l, observations: [...l.observations, text] } : l
+      )
+    );
+    if (selectedLead?._id === id) {
+      setSelectedLead((prev) => prev ? { ...prev, observations: [...prev.observations, text] } : null);
+    }
+  };
+
+  // Sync selected lead when leads change
+  useEffect(() => {
+    if (selectedLead) {
+      const updated = leads.find((l) => l._id === selectedLead._id);
+      if (updated) setSelectedLead(updated);
+    }
+  }, [leads]);
 
   return (
-    <div className="space-y-8 animate-stagger">
-      {/* Welcome Header */}
+    <div className="space-y-6 animate-stagger">
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col md:flex-row md:items-center justify-between gap-4"
       >
         <div>
-          <h1 className="text-3xl font-display font-bold text-foreground">
-            Olá, {user?.name?.split(' ')[0]}! 👋
+          <h1 className="text-2xl font-display font-bold text-foreground">
+            Dashboard de Conversão
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Veja o resumo da sua clínica e acompanhe seus resultados
+          <p className="text-sm text-muted-foreground mt-1">
+            Olá, {user?.name?.split(" ")[0]}! Acompanhe seus leads e métricas em tempo real.
           </p>
         </div>
         <Button variant="gradient" size="lg" className="gap-2">
           <Upload className="h-4 w-4" />
-          Subir Nova Base
+          Importar Leads
         </Button>
       </motion.div>
 
-      {/* Metrics Grid */}
+      {/* Metric cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Total de Consultas"
-          value={user?.consultasUsadas || 0}
-          icon={Search}
+          title="Total de Leads"
+          value={metrics.totalLeads}
+          icon={Users}
           color="purple"
-          trend={{ value: 12, isPositive: true }}
           delay={0.1}
         />
         <MetricCard
-          title="Clientes Aprovados"
-          value={34}
-          icon={Users}
+          title="Taxa de Interação"
+          value={Number(metrics.taxaInteracao)}
+          format="percentage"
+          icon={Zap}
           color="teal"
-          trend={{ value: 8, isPositive: true }}
           delay={0.2}
         />
         <MetricCard
-          title="Crédito Total Aprovado"
-          value={485000}
-          format="currency"
-          icon={DollarSign}
+          title="Taxa de Conversão"
+          value={Number(metrics.taxaConversao)}
+          format="percentage"
+          icon={TrendingUp}
           color="green"
-          trend={{ value: 23, isPositive: true }}
           delay={0.3}
         />
         <MetricCard
-          title="Taxa de Conversão"
-          value={68}
-          format="percentage"
-          icon={TrendingUp}
+          title="Custo Total"
+          value={metrics.costs.totalCost}
+          format="currency"
+          icon={DollarSign}
           color="orange"
-          trend={{ value: 5, isPositive: true }}
           delay={0.4}
         />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="lg:col-span-2"
-        >
-          <Card className="border-0 shadow-lg h-full">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Evolução de Consultas</CardTitle>
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-helpude-purple-500" />
-                    <span className="text-muted-foreground">Consultas</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-helpude-teal-500" />
-                    <span className="text-muted-foreground">Aprovados</span>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorConsultas" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#7b5fc7" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#7b5fc7" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorAprovados" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="date" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#9ca3af', fontSize: 12 }}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#9ca3af', fontSize: 12 }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: 'none',
-                        borderRadius: '12px',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="consultas"
-                      stroke="#7b5fc7"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorConsultas)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="aprovados"
-                      stroke="#14b8a6"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorAprovados)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card className="border-0 shadow-lg h-full">
-            <CardHeader>
-              <CardTitle>Ações Rápidas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-between h-auto py-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-helpude-purple-100">
-                    <Upload className="h-4 w-4 text-helpude-purple-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Upload de Base</p>
-                    <p className="text-xs text-muted-foreground">Até 50 registros</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-              </Button>
-
-              <Button variant="outline" className="w-full justify-between h-auto py-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-helpude-teal-100">
-                    <Users className="h-4 w-4 text-helpude-teal-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Ver Pipeline</p>
-                    <p className="text-xs text-muted-foreground">34 clientes aprovados</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-              </Button>
-
-              <Button variant="outline" className="w-full justify-between h-auto py-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-100">
-                    <CreditCard className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Configurar Marketing</p>
-                    <p className="text-xs text-muted-foreground">RCS, Email, WhatsApp</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Level Progress */}
+      {/* Color Kanban */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.3 }}
       >
-        <LevelProgress />
+        <h2 className="text-lg font-display font-bold text-foreground mb-3">
+          Pipeline por Cor
+        </h2>
+        <ColorKanban leads={leads} onSelectLead={setSelectedLead} />
       </motion.div>
 
-      {/* Products Section */}
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-display font-bold text-foreground">
-              Produtos Disponíveis
-            </h2>
-            <p className="text-muted-foreground">
-              Explore as opções de crédito para seus pacientes
-            </p>
-          </div>
-        </div>
+      {/* Charts & Stats */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <StatsCharts metrics={metrics} timeline={timeline} />
+      </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product, index) => (
-            <ProductCard key={product.id} product={product} delay={0.1 * index} />
-          ))}
-        </div>
-      </div>
+      {/* Lead detail modal */}
+      {selectedLead && (
+        <LeadDetail
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          onUpdateColor={handleUpdateColor}
+          onCall={handleCall}
+          onWhatsApp={() => {}}
+          onAddObservation={handleAddObservation}
+        />
+      )}
     </div>
   );
 }
